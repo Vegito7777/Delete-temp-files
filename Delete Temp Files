@@ -1,0 +1,47 @@
+# Remove Temp Files
+Remove-Item "C:\Windows\Temp\*" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item $env:TEMP\* -Recurse -Force -ErrorAction SilentlyContinue
+
+# Define the function to call SHEmptyRecycleBin from shell32.dll
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+
+public class RecycleBin
+{
+    [DllImport("shell32.dll", CharSet = CharSet.Auto)]
+    public static extern int SHEmptyRecycleBin(IntPtr hwnd, string pszRootPath, uint dwFlags);
+}
+"@
+
+# Define flags for the SHEmptyRecycleBin function
+$SHERB_NOSOUND = 0x00000001
+$SHERB_NOPROGRESSUI = 0x00000002
+$SHERB_NODIALOG = 0x00000004
+
+# Call SHEmptyRecycleBin to empty the Recycle Bin
+$result = [RecycleBin]::SHEmptyRecycleBin([IntPtr]::Zero, $null, $SHERB_NOSOUND -bor $SHERB_NOPROGRESSUI -bor $SHERB_NODIALOG)
+
+if ($result -eq 0) {
+    Write-Output "Recycle Bin emptied successfully."
+} else {
+    Write-Output "Failed to empty the Recycle Bin. Error code: $result."
+}
+
+# Define the path to the Prefetch folder
+$prefetchPath = "C:\Windows\Prefetch"
+
+# Check if the Prefetch folder exists
+if (Test-Path $prefetchPath) {
+    # Get all files in the Prefetch folder
+    $prefetchFiles = Get-ChildItem -Path $prefetchPath
+
+    # Delete each file
+    foreach ($file in $prefetchFiles) {
+        Remove-Item -Path $file.FullName -Force
+    }
+
+    Write-Output "Prefetch files deleted successfully."
+} else {
+    Write-Output "Prefetch folder does not exist."
+}
